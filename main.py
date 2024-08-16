@@ -74,3 +74,24 @@ class DataCleaner(DataLoader):
                             print(f"Error processing file {filepath}: {e}")
 
             self.y = np.array(self.y)  # Convert labels to numpy array
+    
+    def pad_audio(self):
+        """
+        Pads or truncates the audio array to the target length.
+        """
+        padded_X = []
+        for audio in self.X:
+            if len(audio) > self.target_length:
+                padded_audio = audio[:self.target_length]
+            else:
+                padded_audio = np.pad(audio, (0, self.target_length - len(audio)), 'constant')
+            padded_X.append(padded_audio)
+
+        return np.array(padded_X)
+
+    def get_data(self):
+        """
+        Returns the processed and padded data and labels.
+        """
+        self.X = self.pad_audio()
+        return np.array(self.X), np.array(self.y)
