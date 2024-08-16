@@ -49,3 +49,28 @@ class DataCleaner(DataLoader):
 
             cleaned_X.append(cleaned_audio)
         return cleaned_X
+    
+    def load_data(self):
+            """
+            Load audio files and store them in X.
+            """
+            for i, emotion in enumerate(self.emotions):
+                emotion_dir = os.path.join(self.data_dir, emotion)
+                wav_files = [f for f in os.listdir(emotion_dir) if f.endswith('.wav')]
+                
+                if self.verbose:
+                    print(f"Processing {len(wav_files)} files for emotion: {emotion}")
+
+                for filename in wav_files:
+                    filepath = os.path.join(emotion_dir, filename)
+                    try:
+                        # Load the audio file
+                        audio, _ = librosa.load(filepath, sr=self.sample_rate)
+                        self.X.append(audio)
+                        self.y.append(i)
+
+                    except Exception as e:
+                        if self.verbose:
+                            print(f"Error processing file {filepath}: {e}")
+
+            self.y = np.array(self.y)  # Convert labels to numpy array
