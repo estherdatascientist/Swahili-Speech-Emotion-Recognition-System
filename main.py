@@ -264,3 +264,12 @@ class Evaluation(TrainingWithCallbacks):
         # Print classification report
         print("Classification Report:")
         print(classification_report(y_test, y_pred))
+
+class ModelSaver(Evaluation):
+    def __init__(self, input_shape, num_classes, save_path='final_model.h5'):
+        super().__init__(input_shape, num_classes)
+        self.save_path = save_path
+
+    def save_model(self):
+        self.model.save(self.save_path)
+        print(f"Model saved to {self.save_path}")
