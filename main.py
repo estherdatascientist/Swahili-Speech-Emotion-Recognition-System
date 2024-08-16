@@ -154,3 +154,61 @@ class DataSaver(EmotionLabeler):
         X_train, X_temp, y_train, y_temp = train_test_split(features, labels, test_size=0.3, random_state=42)
         X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42)
         return X_train, X_val, X_test, y_train, y_val, y_test
+    
+    
+class Modeling:
+    def __init__(self, input_shape, num_classes):
+        self.input_shape = input_shape
+        self.num_classes = num_classes
+        self.model = None
+
+    def build_model(self):
+        model = Sequential()
+        
+        # Define the input layer using the Input class
+        model.add(Input(shape=self.input_shape))
+        
+        # Add LSTM layers
+        model.add(LSTM(128, return_sequences=True))
+        model.add(BatchNormalization())
+        model.add(Dropout(0.2))
+
+        model.add(LSTM(64, return_sequences=False))
+        model.add(BatchNormalization())
+        model.add(Dropout(0.2))
+
+        # Dense layers
+        model.add(Dense(32, activation='relu'))
+        model.add(Dropout(0.2))
+        
+        # Output layer
+        model.add(Dense(self.num_classes, activation='softmax'))
+
+        self.model = model
+
+    def compile_model(self, learning_rate=0.001):
+        self.model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate),
+                           loss='sparse_categorical_crossentropy',
+                           metrics=['accuracy'])
+
+    def get_model(self):
+        return self.model
+    
+class TrainingWithCallbacks(Modeling):
+    def __init__(self, input_shape, num_classes):
+        super().__init__(input_shape, num_classes)
+
+    def train_model(self, X_train, y_train, X_val, y_val, epochs=50, batch_size=32):
+        # Early Stopping
+        early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
+
+        # Model Checkpoint (with the updated .keras extension)
+        model_checkpoint = ModelCheckpoint('best_model.keras', save_best_only=True, monitor='val_loss', mode='min')
+
+        # Train the model
+        history = self.model.fit(X_train, y_train,
+                                 validation_data=(X_val, y_val),
+                                 epochs=epochs,
+                                 batch_size=batch_size,
+                                 callbacks=[early_stopping, model_checkpoint])
+        return history
