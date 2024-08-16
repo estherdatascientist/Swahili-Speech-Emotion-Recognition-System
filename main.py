@@ -118,3 +118,15 @@ class FeatureExtractor(AudioPreprocessor):
         """
         self.extract_features()
         return self.features, self.y
+
+class EmotionLabeler(FeatureExtractor):
+    def __init__(self, data_dir, emotions, sample_rate, target_length=16000, n_mfcc=13, verbose=True):
+        super().__init__(data_dir, emotions, sample_rate, target_length, n_mfcc, verbose)
+        self.emotion_map = {i: emotion for i, emotion in enumerate(emotions)}
+
+    def label_emotions(self):
+        labeled_emotions = [self.emotion_map[label] for label in self.y]
+        return labeled_emotions
+
+    def get_numerical_labels(self):
+        return self.y
