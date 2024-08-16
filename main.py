@@ -212,3 +212,64 @@ class TrainingWithCallbacks(Modeling):
                                  batch_size=batch_size,
                                  callbacks=[early_stopping, model_checkpoint])
         return history
+    
+class Evaluation(TrainingWithCallbacks):
+    def __init__(self, input_shape, num_classes):
+        super().__init__(input_shape, num_classes)
+
+    def evaluate_model(self, X_test, y_test):
+        results = self.model.evaluate(X_test, y_test)
+        print(f"Test Loss: {results[0]}")
+        print(f"Test Accuracy: {results[1]}")
+        return results
+
+    def plot_training_history(self, history):
+        plt.figure(figsize=(12, 4))
+
+        # Accuracy plot
+        plt.subplot(1, 2, 1)
+        plt.plot(history.history['accuracy'], label='Train Accuracy')
+        plt.plot(history.history['val_accuracy'], label='Val Accuracy')
+        plt.title('Model Accuracy')
+        plt.xlabel('Epochs')
+        plt.ylabel('Accuracy')
+        plt.legend()
+
+        # Loss plot
+        plt.subplot(1, 2, 2)
+        plt.plot(history.history['loss'], label='Train Loss')
+        plt.plot(history.history['val_loss'], label='Val Loss')
+        plt.title('Model Loss')
+        plt.xlabel('Epochs')
+        plt.ylabel('Loss')
+        plt.legend()
+
+        plt.show()
+
+    def plot_confusion_matrix(self, X_test, y_test):
+        # Predict the labels for the test set
+        y_pred = np.argmax(self.model.predict(X_test), axis=1)
+
+        # Compute the confusion matrix
+        cm = confusion_matrix(y_test, y_pred)
+
+        # Plot the confusion matrix
+        plt.figure(figsize=(10, 7))
+        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
+        plt.xlabel('Predicted Label')
+        plt.ylabel('True Label')
+        plt.title('Confusion Matrix')
+        plt.show()
+
+        # Print classification report
+        print("Classification Report:")
+        print(classification_report(y_test, y_pred))
+
+class ModelSaver(Evaluation):
+    def __init__(self, input_shape, num_classes, save_path='final_model.h5'):
+        super().__init__(input_shape, num_classes)
+        self.save_path = save_path
+
+    def save_model(self):
+        self.model.save(self.save_path)
+        print(f"Model saved to {self.save_path}")
