@@ -193,3 +193,22 @@ class Modeling:
 
     def get_model(self):
         return self.model
+    
+class TrainingWithCallbacks(Modeling):
+    def __init__(self, input_shape, num_classes):
+        super().__init__(input_shape, num_classes)
+
+    def train_model(self, X_train, y_train, X_val, y_val, epochs=50, batch_size=32):
+        # Early Stopping
+        early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
+
+        # Model Checkpoint (with the updated .keras extension)
+        model_checkpoint = ModelCheckpoint('best_model.keras', save_best_only=True, monitor='val_loss', mode='min')
+
+        # Train the model
+        history = self.model.fit(X_train, y_train,
+                                 validation_data=(X_val, y_val),
+                                 epochs=epochs,
+                                 batch_size=batch_size,
+                                 callbacks=[early_stopping, model_checkpoint])
+        return history
