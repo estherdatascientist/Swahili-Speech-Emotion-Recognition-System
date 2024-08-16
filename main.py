@@ -154,3 +154,42 @@ class DataSaver(EmotionLabeler):
         X_train, X_temp, y_train, y_temp = train_test_split(features, labels, test_size=0.3, random_state=42)
         X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42)
         return X_train, X_val, X_test, y_train, y_val, y_test
+    
+    
+class Modeling:
+    def __init__(self, input_shape, num_classes):
+        self.input_shape = input_shape
+        self.num_classes = num_classes
+        self.model = None
+
+    def build_model(self):
+        model = Sequential()
+        
+        # Define the input layer using the Input class
+        model.add(Input(shape=self.input_shape))
+        
+        # Add LSTM layers
+        model.add(LSTM(128, return_sequences=True))
+        model.add(BatchNormalization())
+        model.add(Dropout(0.2))
+
+        model.add(LSTM(64, return_sequences=False))
+        model.add(BatchNormalization())
+        model.add(Dropout(0.2))
+
+        # Dense layers
+        model.add(Dense(32, activation='relu'))
+        model.add(Dropout(0.2))
+        
+        # Output layer
+        model.add(Dense(self.num_classes, activation='softmax'))
+
+        self.model = model
+
+    def compile_model(self, learning_rate=0.001):
+        self.model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate),
+                           loss='sparse_categorical_crossentropy',
+                           metrics=['accuracy'])
+
+    def get_model(self):
+        return self.model
