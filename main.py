@@ -33,3 +33,19 @@ class DataLoader:
                 self.y.append(i)  # Use emotion index as label
 
         self.y = np.array(self.y)  # Convert labels to numpy array
+class DataCleaner(DataLoader):
+    def __init__(self, X, sample_rate):
+        self.X = X
+        self.sample_rate = sample_rate
+
+    def clean_data(self):
+        cleaned_X = []
+        for audio in self.X:
+            # Noise Reduction
+            cleaned_audio = nr.reduce_noise(y=audio, sr=self.sample_rate)
+
+            # Trim Silence
+            cleaned_audio, _ = librosa.effects.trim(cleaned_audio)
+
+            cleaned_X.append(cleaned_audio)
+        return cleaned_X
