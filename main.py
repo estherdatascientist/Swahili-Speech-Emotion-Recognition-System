@@ -95,3 +95,26 @@ class DataCleaner(DataLoader):
         """
         self.X = self.pad_audio()
         return np.array(self.X), np.array(self.y)
+    
+class FeatureExtractor(AudioPreprocessor):
+    def __init__(self, data_dir, emotions, sample_rate, target_length=16000, n_mfcc=13, verbose=True):
+        super().__init__(data_dir, emotions, sample_rate, target_length, verbose)
+        self.n_mfcc = n_mfcc
+        self.features = None  # To store the extracted features
+
+    def extract_features(self):
+        extracted_features = []
+        for audio in self.X:
+            mfccs = librosa.feature.mfcc(y=audio, sr=self.sample_rate, n_mfcc=self.n_mfcc)
+            mfccs_scaled = np.mean(mfccs.T, axis=0)  # Take the mean across time steps
+            extracted_features.append(mfccs_scaled)
+
+        self.features = np.array(extracted_features)
+        return self.features
+
+    def get_features_and_labels(self):
+        """
+        Returns extracted features and corresponding numerical labels.
+        """
+        self.extract_features()
+        return self.features, self.y
