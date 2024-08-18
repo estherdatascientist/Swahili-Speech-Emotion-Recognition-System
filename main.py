@@ -240,119 +240,37 @@ class DataSaver(EmotionLabeler):
         return X_train, X_val, X_test, y_train, y_val, y_test
     
 class Modeling:
-    def __init__(self, input_shape, num_classes):
-        self.input_shape = input_shape
+    def __init__(self, model_name, input_shape=None, num_classes=None):
+        self.model_name = model_name
+        self.input_shape = input_shape  # Only used for neural networks
         self.num_classes = num_classes
         self.model = None
 
     def build_model(self):
-        model = Sequential()
-        
-        # Define the input layer using the Input class
-        model.add(Input(shape=self.input_shape))
-        
-        # Add LSTM layers
-        model.add(LSTM(128, return_sequences=True))
-        model.add(BatchNormalization())
-        model.add(Dropout(0.2))
+        if self.model_name == 'knn':
+            self.model = KNeighborsClassifier()
+        elif self.model_name == 'random_forest':
+            self.model = RandomForestClassifier()
+        elif self.model_name == 'svm':
+            self.model = SVC(probability=True)
+        elif self.model_name == 'xgboost':
+            self.model = XGBClassifier(use_label_encoder=False, eval_metric='mlogloss', verbosity=0)
+        elif self.model_name == 'catboost':
+            self.model = CatBoostClassifier(verbose=0)
+        elif self.model_name == 'mlp':
+            self.model = MLPClassifier(hidden_layer_sizes=(128, 64), max_iter=300)
 
-        model.add(LSTM(64, return_sequences=False))
-        model.add(BatchNormalization())
-        model.add(Dropout(0.2))
 
-        # Dense layers
-        model.add(Dense(32, activation='relu'))
-        model.add(Dropout(0.2))
-        
-        # Output layer
-        model.add(Dense(self.num_classes, activation='softmax'))
-
-        self.model = model
-
-    def compile_model(self, learning_rate=0.001):
-        self.model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate),
-                           loss='sparse_categorical_crossentropy',
-                           metrics=['accuracy'])
-
-    def get_model(self):
-        return self.model
-    
 class TrainingWithCallbacks(Modeling):
-    def __init__(self, input_shape, num_classes):
-        super().__init__(input_shape, num_classes)
+    def __init__(self, model_name, input_shape=None, num_classes=None):
+        super().__init__(model_name, input_shape, num_classes)
 
-    def train_model(self, X_train, y_train, X_val, y_val, epochs=50, batch_size=32):
-        # Early Stopping
-        early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
-
-        # Model Checkpoint (with the updated .keras extension)
-        model_checkpoint = ModelCheckpoint('best_model.keras', save_best_only=True, monitor='val_loss', mode='min')
-
-        # Train the model
-        history = self.model.fit(X_train, y_train,
-                                 validation_data=(X_val, y_val),
-                                 epochs=epochs,
-                                 batch_size=batch_size,
-                                 callbacks=[early_stopping, model_checkpoint])
-        return history
-    
-class Evaluation(TrainingWithCallbacks):
-    def __init__(self, input_shape, num_classes):
-        super().__init__(input_shape, num_classes)
-
-    def evaluate_model(self, X_test, y_test):
-        results = self.model.evaluate(X_test, y_test)
-        print(f"Test Loss: {results[0]}")
-        print(f"Test Accuracy: {results[1]}")
-        return results
-
-    def plot_training_history(self, history):
-        plt.figure(figsize=(12, 4))
-
-        # Accuracy plot
-        plt.subplot(1, 2, 1)
-        plt.plot(history.history['accuracy'], label='Train Accuracy')
-        plt.plot(history.history['val_accuracy'], label='Val Accuracy')
-        plt.title('Model Accuracy')
-        plt.xlabel('Epochs')
-        plt.ylabel('Accuracy')
-        plt.legend()
-
-        # Loss plot
-        plt.subplot(1, 2, 2)
-        plt.plot(history.history['loss'], label='Train Loss')
-        plt.plot(history.history['val_loss'], label='Val Loss')
-        plt.title('Model Loss')
-        plt.xlabel('Epochs')
-        plt.ylabel('Loss')
-        plt.legend()
-
-        plt.show()
-
-    def plot_confusion_matrix(self, X_test, y_test):
-        # Predict the labels for the test set
-        y_pred = np.argmax(self.model.predict(X_test), axis=1)
-
-        # Compute the confusion matrix
-        cm = confusion_matrix(y_test, y_pred)
-
-        # Plot the confusion matrix
-        plt.figure(figsize=(10, 7))
-        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
-        plt.xlabel('Predicted Label')
-        plt.ylabel('True Label')
-        plt.title('Confusion Matrix')
-        plt.show()
-
-        # Print classification report
-        print("Classification Report:")
-        print(classification_report(y_test, y_pred))
-
-class ModelSaver(Evaluation):
-    def __init__(self, input_shape, num_classes, save_path='final_model.h5'):
-        super().__init__(input_shape, num_classes)
-        self.save_path = save_path
-
-    def save_model(self):
-        self.model.save(self.save_path)
-        print(f"Model saved to {self.save_path}")
+    def train_model(self, X_train, y_train, X_val=None, y_val=None, epochs=50, batch_size=32):
+        if self.model_name in ['knn', 'random_forest', 'svm', 'xgboost', 'catboost']:
+            self.model.fit(X_train, y_train)
+        elif self.model_name == 'mlp':
+            # For MLP, we don't use epochs and batch_size directly
+            self.model.fit(X_train, y_train)  # No need to pass epochs and batch_size
+            return None  # No history object returned in scikit-learn models
+        else:
+            raise ValueError("Unsupported model name.")
