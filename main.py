@@ -1,17 +1,39 @@
+# Operating System and File Handling
 import os
+
+# Numerical Computation
 import numpy as np
+
+# Audio Processing
 import librosa
 import noisereduce as nr
+
+# Machine Learning (scikit-learn)
 from sklearn.model_selection import train_test_split
-import pandas as pd
-from tensorflow.keras.layers import Input, Dropout 
-import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix, classification_report, f1_score, precision_score, recall_score, roc_curve, auc
-import seaborn as sns
+from sklearn.metrics import confusion_matrix, classification_report, f1_score, precision_score, recall_score, roc_curve, auc, accuracy_score 
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
+from sklearn.neural_network import MLPClassifier
+from sklearn.preprocessing import label_binarize
+
+
+from itertools import cycle
+
+# Machine Learning (XGBoost and CatBoost)
+from xgboost import XGBClassifier
+from catboost import CatBoostClassifier
+
+# Deep Learning (TensorFlow/Keras)
 import tensorflow as tf
-from keras.models import Sequential
-from keras.layers import Dense, LSTM, BatchNormalization 
+from tensorflow.keras.layers import Input, Dropout, Dense, LSTM, BatchNormalization
+from tensorflow.keras.models import Sequential
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
+
+# Data Analysis and Visualization
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 class DataLoader:
     def __init__(self, data_dir, emotions):
