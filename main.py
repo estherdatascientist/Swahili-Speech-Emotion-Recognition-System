@@ -1,17 +1,39 @@
+# Operating System and File Handling
 import os
+
+# Numerical Computation
 import numpy as np
+
+# Audio Processing
 import librosa
 import noisereduce as nr
+
+# Machine Learning (scikit-learn)
 from sklearn.model_selection import train_test_split
-import pandas as pd
-from tensorflow.keras.layers import Input, Dropout 
-import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix, classification_report, f1_score, precision_score, recall_score, roc_curve, auc
-import seaborn as sns
+from sklearn.metrics import confusion_matrix, classification_report, f1_score, precision_score, recall_score, roc_curve, auc, accuracy_score 
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
+from sklearn.neural_network import MLPClassifier
+from sklearn.preprocessing import label_binarize
+
+
+from itertools import cycle
+
+# Machine Learning (XGBoost and CatBoost)
+from xgboost import XGBClassifier
+from catboost import CatBoostClassifier
+
+# Deep Learning (TensorFlow/Keras)
 import tensorflow as tf
-from keras.models import Sequential
-from keras.layers import Dense, LSTM, BatchNormalization 
+from tensorflow.keras.layers import Input, Dropout, Dense, LSTM, BatchNormalization
+from tensorflow.keras.models import Sequential
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
+
+# Data Analysis and Visualization
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 class DataLoader:
     def __init__(self, data_dir, emotions):
@@ -33,6 +55,8 @@ class DataLoader:
                 self.y.append(i)  # Use emotion index as label
 
         self.y = np.array(self.y)  # Convert labels to numpy array
+
+
 class DataCleaner(DataLoader):
     def __init__(self, X, sample_rate):
         self.X = X
@@ -49,32 +73,48 @@ class DataCleaner(DataLoader):
 
             cleaned_X.append(cleaned_audio)
         return cleaned_X
-    
+
+class AudioPreprocessor(DataCleaner):
+    def __init__(self, data_dir, emotions, sample_rate, target_length=16000, verbose=True):
+        # Initialize with data directory, emotions, and target sample rate
+        self.data_dir = data_dir
+        self.emotions = emotions
+        self.target_length = target_length  # Target length for padding/truncating audio files
+        self.verbose = verbose  # Add a verbose flag
+
+        # Initialize DataLoader to load and clean the data
+        self.X = []
+        self.y = []
+        self.sample_rate = sample_rate
+
+        self.load_data()
+        self.X = self.clean_data()  # Clean the loaded data
+
     def load_data(self):
-            """
-            Load audio files and store them in X.
-            """
-            for i, emotion in enumerate(self.emotions):
-                emotion_dir = os.path.join(self.data_dir, emotion)
-                wav_files = [f for f in os.listdir(emotion_dir) if f.endswith('.wav')]
-                
-                if self.verbose:
-                    print(f"Processing {len(wav_files)} files for emotion: {emotion}")
+        """
+        Load audio files and store them in X.
+        """
+        for i, emotion in enumerate(self.emotions):
+            emotion_dir = os.path.join(self.data_dir, emotion)
+            wav_files = [f for f in os.listdir(emotion_dir) if f.endswith('.wav')]
+            
+            if self.verbose:
+                print(f"Processing {len(wav_files)} files for emotion: {emotion}")
 
-                for filename in wav_files:
-                    filepath = os.path.join(emotion_dir, filename)
-                    try:
-                        # Load the audio file
-                        audio, _ = librosa.load(filepath, sr=self.sample_rate)
-                        self.X.append(audio)
-                        self.y.append(i)
+            for filename in wav_files:
+                filepath = os.path.join(emotion_dir, filename)
+                try:
+                    # Load the audio file
+                    audio, _ = librosa.load(filepath, sr=self.sample_rate)
+                    self.X.append(audio)
+                    self.y.append(i)
 
-                    except Exception as e:
-                        if self.verbose:
-                            print(f"Error processing file {filepath}: {e}")
+                except Exception as e:
+                    if self.verbose:
+                        print(f"Error processing file {filepath}: {e}")
 
-            self.y = np.array(self.y)  # Convert labels to numpy array
-    
+        self.y = np.array(self.y)  # Convert labels to numpy array
+
     def pad_audio(self):
         """
         Pads or truncates the audio array to the target length.
@@ -95,7 +135,7 @@ class DataCleaner(DataLoader):
         """
         self.X = self.pad_audio()
         return np.array(self.X), np.array(self.y)
-    
+
 class FeatureExtractor(AudioPreprocessor):
     def __init__(self, data_dir, emotions, sample_rate, target_length=16000, n_mfcc=13, verbose=True):
         super().__init__(data_dir, emotions, sample_rate, target_length, verbose)
@@ -105,9 +145,49 @@ class FeatureExtractor(AudioPreprocessor):
     def extract_features(self):
         extracted_features = []
         for audio in self.X:
+            features = []
+
+            # Extract MFCCs
             mfccs = librosa.feature.mfcc(y=audio, sr=self.sample_rate, n_mfcc=self.n_mfcc)
-            mfccs_scaled = np.mean(mfccs.T, axis=0)  # Take the mean across time steps
-            extracted_features.append(mfccs_scaled)
+            mfccs_mean = np.mean(mfccs, axis=1)
+            features.extend(mfccs_mean)
+
+            # Extract Chroma
+            chroma = librosa.feature.chroma_stft(y=audio, sr=self.sample_rate)
+            chroma_mean = np.mean(chroma, axis=1)
+            features.extend(chroma_mean)
+
+            # Extract Spectral Contrast
+            spectral_contrast = librosa.feature.spectral_contrast(y=audio, sr=self.sample_rate)
+            spectral_contrast_mean = np.mean(spectral_contrast, axis=1)
+            features.extend(spectral_contrast_mean)
+
+            # Extract Zero Crossing Rate
+            zero_crossing_rate = librosa.feature.zero_crossing_rate(y=audio)
+            zero_crossing_rate_mean = np.mean(zero_crossing_rate)
+            features.append(zero_crossing_rate_mean)
+
+            # Extract Root Mean Square Energy
+            rms = librosa.feature.rms(y=audio)
+            rms_mean = np.mean(rms)
+            features.append(rms_mean)
+
+            # Extract Spectral Centroid
+            spectral_centroid = librosa.feature.spectral_centroid(y=audio, sr=self.sample_rate)
+            spectral_centroid_mean = np.mean(spectral_centroid)
+            features.append(spectral_centroid_mean)
+
+            # Extract Spectral Bandwidth
+            spectral_bandwidth = librosa.feature.spectral_bandwidth(y=audio, sr=self.sample_rate)
+            spectral_bandwidth_mean = np.mean(spectral_bandwidth)
+            features.append(spectral_bandwidth_mean)
+
+            # Extract Spectral Roll-off
+            spectral_rolloff = librosa.feature.spectral_rolloff(y=audio, sr=self.sample_rate)
+            spectral_rolloff_mean = np.mean(spectral_rolloff)
+            features.append(spectral_rolloff_mean)
+
+            extracted_features.append(features)
 
         self.features = np.array(extracted_features)
         return self.features
@@ -118,6 +198,8 @@ class FeatureExtractor(AudioPreprocessor):
         """
         self.extract_features()
         return self.features, self.y
+
+    
 
 class EmotionLabeler(FeatureExtractor):
     def __init__(self, data_dir, emotions, sample_rate, target_length=16000, n_mfcc=13, verbose=True):
@@ -130,7 +212,8 @@ class EmotionLabeler(FeatureExtractor):
 
     def get_numerical_labels(self):
         return self.y
-    
+
+
 class DataSaver(EmotionLabeler):
     def __init__(self, data_dir, emotions, sample_rate, target_length=16000, n_mfcc=13, save_path="processed_data.csv", verbose=True):
         super().__init__(data_dir, emotions, sample_rate, target_length, n_mfcc, verbose)
@@ -143,11 +226,12 @@ class DataSaver(EmotionLabeler):
         df.to_csv(self.save_path, index=False)
         print(f"Data saved to {self.save_path}")
 
-    def save_to_npy(self):
-        features, labels = self.get_features_and_labels()
-        np.save(self.save_path.replace('.csv', '_features.npy'), features)
-        np.save(self.save_path.replace('.csv', '_labels.npy'), labels)
-        print(f"Features and labels saved to {self.save_path.replace('.csv', '_features.npy')} and {self.save_path.replace('.csv', '_labels.npy')}")
+    # Remove `save_to_npy` method since it's not needed
+    # def save_to_npy(self):
+    #     features, labels = self.get_features_and_labels()
+    #     np.save(self.save_path.replace('.csv', '_features.npy'), features)
+    #     np.save(self.save_path.replace('.csv', '_labels.npy'), labels)
+    #     print(f"Features and labels saved to {self.save_path.replace('.csv', '_features.npy')} and {self.save_path.replace('.csv', '_labels.npy')}")
 
     def split_data(self):
         features, labels = self.get_features_and_labels()
@@ -155,81 +239,98 @@ class DataSaver(EmotionLabeler):
         X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42)
         return X_train, X_val, X_test, y_train, y_val, y_test
     
-    
 class Modeling:
-    def __init__(self, input_shape, num_classes):
-        self.input_shape = input_shape
+    def __init__(self, model_name, input_shape=None, num_classes=None):
+        self.model_name = model_name
+        self.input_shape = input_shape  # Only used for neural networks
         self.num_classes = num_classes
         self.model = None
 
     def build_model(self):
-        model = Sequential()
-        
-        # Define the input layer using the Input class
-        model.add(Input(shape=self.input_shape))
-        
-        # Add LSTM layers
-        model.add(LSTM(128, return_sequences=True))
-        model.add(BatchNormalization())
-        model.add(Dropout(0.2))
+        if self.model_name == 'knn':
+            self.model = KNeighborsClassifier()
+        elif self.model_name == 'random_forest':
+            self.model = RandomForestClassifier()
+        elif self.model_name == 'svm':
+            self.model = SVC(probability=True)
+        elif self.model_name == 'xgboost':
+            self.model = XGBClassifier(use_label_encoder=False, eval_metric='mlogloss', verbosity=0)
+        elif self.model_name == 'catboost':
+            self.model = CatBoostClassifier(verbose=0)
+        elif self.model_name == 'mlp':
+            self.model = MLPClassifier(hidden_layer_sizes=(128, 64), max_iter=300)
 
-        model.add(LSTM(64, return_sequences=False))
-        model.add(BatchNormalization())
-        model.add(Dropout(0.2))
 
-        # Dense layers
-        model.add(Dense(32, activation='relu'))
-        model.add(Dropout(0.2))
-        
-        # Output layer
-        model.add(Dense(self.num_classes, activation='softmax'))
-
-        self.model = model
-
-    def compile_model(self, learning_rate=0.001):
-        self.model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate),
-                           loss='sparse_categorical_crossentropy',
-                           metrics=['accuracy'])
-
-    def get_model(self):
-        return self.model
-    
 class TrainingWithCallbacks(Modeling):
-    def __init__(self, input_shape, num_classes):
-        super().__init__(input_shape, num_classes)
+    def __init__(self, model_name, input_shape=None, num_classes=None):
+        super().__init__(model_name, input_shape, num_classes)
 
-    def train_model(self, X_train, y_train, X_val, y_val, epochs=50, batch_size=32):
-        # Early Stopping
-        early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
+    def train_model(self, X_train, y_train, X_val=None, y_val=None, epochs=50, batch_size=32):
+        if self.model_name in ['knn', 'random_forest', 'svm', 'xgboost', 'catboost']:
+            self.model.fit(X_train, y_train)
+        elif self.model_name == 'mlp':
+            # For MLP, we don't use epochs and batch_size directly
+            self.model.fit(X_train, y_train)  # No need to pass epochs and batch_size
+            return None  # No history object returned in scikit-learn models
+        else:
+            raise ValueError("Unsupported model name.")
 
-        # Model Checkpoint (with the updated .keras extension)
-        model_checkpoint = ModelCheckpoint('best_model.keras', save_best_only=True, monitor='val_loss', mode='min')
 
-        # Train the model
-        history = self.model.fit(X_train, y_train,
-                                 validation_data=(X_val, y_val),
-                                 epochs=epochs,
-                                 batch_size=batch_size,
-                                 callbacks=[early_stopping, model_checkpoint])
-        return history
-    
 class Evaluation(TrainingWithCallbacks):
-    def __init__(self, input_shape, num_classes):
-        super().__init__(input_shape, num_classes)
+    def __init__(self, model_name, input_shape=None, num_classes=None):
+        super().__init__(model_name, input_shape, num_classes)
+        self.history = None
 
     def evaluate_model(self, X_test, y_test):
-        results = self.model.evaluate(X_test, y_test)
-        print(f"Test Loss: {results[0]}")
-        print(f"Test Accuracy: {results[1]}")
-        return results
+        y_pred = self.model.predict(X_test)
+        
+        # Handle predictions based on model type
+        if self.model_name in ['knn', 'random_forest', 'svm', 'xgboost', 'catboost']:
+            y_pred = y_pred  # Predicted labels are directly provided
+        elif self.model_name == 'mlp':
+            y_pred = np.argmax(y_pred, axis=1) if len(y_pred.shape) > 1 else y_pred
+        else:
+            raise ValueError("Unsupported model name.")
 
-    def plot_training_history(self, history):
+        # Calculate accuracy
+        accuracy = accuracy_score(y_test, y_pred)
+        print(f"Test Accuracy: {accuracy}")
+
+        # Generate and display the confusion matrix
+        self.plot_confusion_matrix(y_test, y_pred)
+
+        # Generate and print the classification report
+        print("Classification Report:")
+        print(classification_report(y_test, y_pred))
+
+        # Plot ROC Curve based on the number of classes
+        if self.num_classes == 2:
+            self.plot_roc_curve(y_test, y_pred)
+        else:
+            self.plot_multiclass_roc(y_test, y_pred)
+
+        return accuracy
+
+    def plot_confusion_matrix(self, y_test, y_pred):
+        cm = confusion_matrix(y_test, y_pred)
+        plt.figure(figsize=(10, 7))
+        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar=False)
+        plt.xlabel('Predicted Label')
+        plt.ylabel('True Label')
+        plt.title('Confusion Matrix')
+        plt.show()
+
+    def plot_training_history(self):
+        if self.history is None:
+            print("No training history available for non-neural network models.")
+            return
+
         plt.figure(figsize=(12, 4))
 
         # Accuracy plot
         plt.subplot(1, 2, 1)
-        plt.plot(history.history['accuracy'], label='Train Accuracy')
-        plt.plot(history.history['val_accuracy'], label='Val Accuracy')
+        plt.plot(self.history.history['accuracy'], label='Train Accuracy')
+        plt.plot(self.history.history['val_accuracy'], label='Val Accuracy')
         plt.title('Model Accuracy')
         plt.xlabel('Epochs')
         plt.ylabel('Accuracy')
@@ -237,8 +338,8 @@ class Evaluation(TrainingWithCallbacks):
 
         # Loss plot
         plt.subplot(1, 2, 2)
-        plt.plot(history.history['loss'], label='Train Loss')
-        plt.plot(history.history['val_loss'], label='Val Loss')
+        plt.plot(self.history.history['loss'], label='Train Loss')
+        plt.plot(self.history.history['val_loss'], label='Val Loss')
         plt.title('Model Loss')
         plt.xlabel('Epochs')
         plt.ylabel('Loss')
@@ -246,30 +347,67 @@ class Evaluation(TrainingWithCallbacks):
 
         plt.show()
 
-    def plot_confusion_matrix(self, X_test, y_test):
-        # Predict the labels for the test set
-        y_pred = np.argmax(self.model.predict(X_test), axis=1)
+    def plot_roc_curve(self, y_test, y_pred):
+        fpr, tpr, _ = roc_curve(y_test, y_pred)
+        roc_auc = auc(fpr, tpr)
 
-        # Compute the confusion matrix
-        cm = confusion_matrix(y_test, y_pred)
-
-        # Plot the confusion matrix
-        plt.figure(figsize=(10, 7))
-        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
-        plt.xlabel('Predicted Label')
-        plt.ylabel('True Label')
-        plt.title('Confusion Matrix')
+        plt.figure(figsize=(8, 6))
+        plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (area = {roc_auc:.2f})')
+        plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+        plt.xlim([0.0, 1.0])
+        plt.ylim([0.0, 1.05])
+        plt.xlabel('False Positive Rate')
+        plt.ylabel('True Positive Rate')
+        plt.title('Receiver Operating Characteristic')
+        plt.legend(loc='lower right')
         plt.show()
 
-        # Print classification report
-        print("Classification Report:")
-        print(classification_report(y_test, y_pred))
+    def plot_multiclass_roc(self, y_test, y_pred):
+        y_test_bin = label_binarize(y_test, classes=range(self.num_classes))
+        y_pred_bin = label_binarize(y_pred, classes=range(self.num_classes))
 
-class ModelSaver(Evaluation):
-    def __init__(self, input_shape, num_classes, save_path='final_model.h5'):
-        super().__init__(input_shape, num_classes)
-        self.save_path = save_path
+        fpr = dict()
+        tpr = dict()
+        roc_auc = dict()
+        for i in range(self.num_classes):
+            fpr[i], tpr[i], _ = roc_curve(y_test_bin[:, i], y_pred_bin[:, i])
+            roc_auc[i] = auc(fpr[i], tpr[i])
 
-    def save_model(self):
-        self.model.save(self.save_path)
-        print(f"Model saved to {self.save_path}")
+        plt.figure(figsize=(8, 6))
+        colors = cycle(['aqua', 'darkorange', 'cornflowerblue'])
+        for i, color in zip(range(self.num_classes), colors):
+            plt.plot(fpr[i], tpr[i], color=color, lw=2,
+                     label=f'ROC curve of class {i} (area = {roc_auc[i]:.2f})')
+
+        plt.plot([0, 1], [0, 1], 'k--', lw=2)
+        plt.xlim([0.0, 1.0])
+        plt.ylim([0.0, 1.05])
+        plt.xlabel('False Positive Rate')
+        plt.ylabel('True Positive Rate')
+        plt.title('Multiclass Receiver Operating Characteristic')
+        plt.legend(loc="lower right")
+        plt.show()
+
+    def plot_feature_importance(self):
+        if self.model_name in ['random_forest', 'xgboost', 'catboost']:
+            importance = self.model.feature_importances_
+            plt.figure(figsize=(10, 7))
+            plt.bar(range(len(importance)), importance)
+            plt.title('Feature Importance')
+            plt.xlabel('Feature')
+            plt.ylabel('Importance')
+            plt.show()
+        else:
+            print(f"Feature importance not available for {self.model_name}.")
+
+    def evaluate_and_plot(self, X_test, y_test):
+        # Evaluate the model and print classification report
+        accuracy = self.evaluate_model(X_test, y_test)
+
+        # Plot relevant plots
+        self.plot_training_history()  # Only for neural network models
+        self.plot_feature_importance()  # Only for models that support it
+
+        return accuracy
+
+
