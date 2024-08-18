@@ -159,17 +159,69 @@ class FeatureExtractor(AudioPreprocessor):
         self.extract_features()
         return self.features, self.y
 
-class EmotionLabeler(FeatureExtractor):
+class FeatureExtractor(AudioPreprocessor):
     def __init__(self, data_dir, emotions, sample_rate, target_length=16000, n_mfcc=13, verbose=True):
-        super().__init__(data_dir, emotions, sample_rate, target_length, n_mfcc, verbose)
-        self.emotion_map = {i: emotion for i, emotion in enumerate(emotions)}
+        super().__init__(data_dir, emotions, sample_rate, target_length, verbose)
+        self.n_mfcc = n_mfcc
+        self.features = None  # To store the extracted features
 
-    def label_emotions(self):
-        labeled_emotions = [self.emotion_map[label] for label in self.y]
-        return labeled_emotions
+    def extract_features(self):
+        extracted_features = []
+        for audio in self.X:
+            features = []
 
-    def get_numerical_labels(self):
-        return self.y
+            # Extract MFCCs
+            mfccs = librosa.feature.mfcc(y=audio, sr=self.sample_rate, n_mfcc=self.n_mfcc)
+            mfccs_mean = np.mean(mfccs, axis=1)
+            features.extend(mfccs_mean)
+
+            # Extract Chroma
+            chroma = librosa.feature.chroma_stft(y=audio, sr=self.sample_rate)
+            chroma_mean = np.mean(chroma, axis=1)
+            features.extend(chroma_mean)
+
+            # Extract Spectral Contrast
+            spectral_contrast = librosa.feature.spectral_contrast(y=audio, sr=self.sample_rate)
+            spectral_contrast_mean = np.mean(spectral_contrast, axis=1)
+            features.extend(spectral_contrast_mean)
+
+            # Extract Zero Crossing Rate
+            zero_crossing_rate = librosa.feature.zero_crossing_rate(y=audio)
+            zero_crossing_rate_mean = np.mean(zero_crossing_rate)
+            features.append(zero_crossing_rate_mean)
+
+            # Extract Root Mean Square Energy
+            rms = librosa.feature.rms(y=audio)
+            rms_mean = np.mean(rms)
+            features.append(rms_mean)
+
+            # Extract Spectral Centroid
+            spectral_centroid = librosa.feature.spectral_centroid(y=audio, sr=self.sample_rate)
+            spectral_centroid_mean = np.mean(spectral_centroid)
+            features.append(spectral_centroid_mean)
+
+            # Extract Spectral Bandwidth
+            spectral_bandwidth = librosa.feature.spectral_bandwidth(y=audio, sr=self.sample_rate)
+            spectral_bandwidth_mean = np.mean(spectral_bandwidth)
+            features.append(spectral_bandwidth_mean)
+
+            # Extract Spectral Roll-off
+            spectral_rolloff = librosa.feature.spectral_rolloff(y=audio, sr=self.sample_rate)
+            spectral_rolloff_mean = np.mean(spectral_rolloff)
+            features.append(spectral_rolloff_mean)
+
+            extracted_features.append(features)
+
+        self.features = np.array(extracted_features)
+        return self.features
+
+    def get_features_and_labels(self):
+        """
+        Returns extracted features and corresponding numerical labels.
+        """
+        self.extract_features()
+        return self.features, self.y
+
     
 class DataSaver(EmotionLabeler):
     def __init__(self, data_dir, emotions, sample_rate, target_length=16000, n_mfcc=13, save_path="processed_data.csv", verbose=True):
