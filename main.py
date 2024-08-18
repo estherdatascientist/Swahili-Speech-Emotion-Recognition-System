@@ -274,3 +274,140 @@ class TrainingWithCallbacks(Modeling):
             return None  # No history object returned in scikit-learn models
         else:
             raise ValueError("Unsupported model name.")
+
+
+class Evaluation(TrainingWithCallbacks):
+    def __init__(self, model_name, input_shape=None, num_classes=None):
+        super().__init__(model_name, input_shape, num_classes)
+        self.history = None
+
+    def evaluate_model(self, X_test, y_test):
+        y_pred = self.model.predict(X_test)
+        
+        # Handle predictions based on model type
+        if self.model_name in ['knn', 'random_forest', 'svm', 'xgboost', 'catboost']:
+            y_pred = y_pred  # Predicted labels are directly provided
+        elif self.model_name == 'mlp':
+            y_pred = np.argmax(y_pred, axis=1) if len(y_pred.shape) > 1 else y_pred
+        else:
+            raise ValueError("Unsupported model name.")
+
+        # Calculate accuracy
+        accuracy = accuracy_score(y_test, y_pred)
+        print(f"Test Accuracy: {accuracy}")
+
+        # Generate and display the confusion matrix
+        self.plot_confusion_matrix(y_test, y_pred)
+
+        # Generate and print the classification report
+        print("Classification Report:")
+        print(classification_report(y_test, y_pred))
+
+        # Plot ROC Curve based on the number of classes
+        if self.num_classes == 2:
+            self.plot_roc_curve(y_test, y_pred)
+        else:
+            self.plot_multiclass_roc(y_test, y_pred)
+
+        return accuracy
+
+    def plot_confusion_matrix(self, y_test, y_pred):
+        cm = confusion_matrix(y_test, y_pred)
+        plt.figure(figsize=(10, 7))
+        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar=False)
+        plt.xlabel('Predicted Label')
+        plt.ylabel('True Label')
+        plt.title('Confusion Matrix')
+        plt.show()
+
+    def plot_training_history(self):
+        if self.history is None:
+            print("No training history available for non-neural network models.")
+            return
+
+        plt.figure(figsize=(12, 4))
+
+        # Accuracy plot
+        plt.subplot(1, 2, 1)
+        plt.plot(self.history.history['accuracy'], label='Train Accuracy')
+        plt.plot(self.history.history['val_accuracy'], label='Val Accuracy')
+        plt.title('Model Accuracy')
+        plt.xlabel('Epochs')
+        plt.ylabel('Accuracy')
+        plt.legend()
+
+        # Loss plot
+        plt.subplot(1, 2, 2)
+        plt.plot(self.history.history['loss'], label='Train Loss')
+        plt.plot(self.history.history['val_loss'], label='Val Loss')
+        plt.title('Model Loss')
+        plt.xlabel('Epochs')
+        plt.ylabel('Loss')
+        plt.legend()
+
+        plt.show()
+
+    def plot_roc_curve(self, y_test, y_pred):
+        fpr, tpr, _ = roc_curve(y_test, y_pred)
+        roc_auc = auc(fpr, tpr)
+
+        plt.figure(figsize=(8, 6))
+        plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (area = {roc_auc:.2f})')
+        plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+        plt.xlim([0.0, 1.0])
+        plt.ylim([0.0, 1.05])
+        plt.xlabel('False Positive Rate')
+        plt.ylabel('True Positive Rate')
+        plt.title('Receiver Operating Characteristic')
+        plt.legend(loc='lower right')
+        plt.show()
+
+    def plot_multiclass_roc(self, y_test, y_pred):
+        y_test_bin = label_binarize(y_test, classes=range(self.num_classes))
+        y_pred_bin = label_binarize(y_pred, classes=range(self.num_classes))
+
+        fpr = dict()
+        tpr = dict()
+        roc_auc = dict()
+        for i in range(self.num_classes):
+            fpr[i], tpr[i], _ = roc_curve(y_test_bin[:, i], y_pred_bin[:, i])
+            roc_auc[i] = auc(fpr[i], tpr[i])
+
+        plt.figure(figsize=(8, 6))
+        colors = cycle(['aqua', 'darkorange', 'cornflowerblue'])
+        for i, color in zip(range(self.num_classes), colors):
+            plt.plot(fpr[i], tpr[i], color=color, lw=2,
+                     label=f'ROC curve of class {i} (area = {roc_auc[i]:.2f})')
+
+        plt.plot([0, 1], [0, 1], 'k--', lw=2)
+        plt.xlim([0.0, 1.0])
+        plt.ylim([0.0, 1.05])
+        plt.xlabel('False Positive Rate')
+        plt.ylabel('True Positive Rate')
+        plt.title('Multiclass Receiver Operating Characteristic')
+        plt.legend(loc="lower right")
+        plt.show()
+
+    def plot_feature_importance(self):
+        if self.model_name in ['random_forest', 'xgboost', 'catboost']:
+            importance = self.model.feature_importances_
+            plt.figure(figsize=(10, 7))
+            plt.bar(range(len(importance)), importance)
+            plt.title('Feature Importance')
+            plt.xlabel('Feature')
+            plt.ylabel('Importance')
+            plt.show()
+        else:
+            print(f"Feature importance not available for {self.model_name}.")
+
+    def evaluate_and_plot(self, X_test, y_test):
+        # Evaluate the model and print classification report
+        accuracy = self.evaluate_model(X_test, y_test)
+
+        # Plot relevant plots
+        self.plot_training_history()  # Only for neural network models
+        self.plot_feature_importance()  # Only for models that support it
+
+        return accuracy
+
+
