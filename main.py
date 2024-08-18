@@ -145,29 +145,6 @@ class FeatureExtractor(AudioPreprocessor):
     def extract_features(self):
         extracted_features = []
         for audio in self.X:
-            mfccs = librosa.feature.mfcc(y=audio, sr=self.sample_rate, n_mfcc=self.n_mfcc)
-            mfccs_scaled = np.mean(mfccs.T, axis=0)  # Take the mean across time steps
-            extracted_features.append(mfccs_scaled)
-
-        self.features = np.array(extracted_features)
-        return self.features
-
-    def get_features_and_labels(self):
-        """
-        Returns extracted features and corresponding numerical labels.
-        """
-        self.extract_features()
-        return self.features, self.y
-
-class FeatureExtractor(AudioPreprocessor):
-    def __init__(self, data_dir, emotions, sample_rate, target_length=16000, n_mfcc=13, verbose=True):
-        super().__init__(data_dir, emotions, sample_rate, target_length, verbose)
-        self.n_mfcc = n_mfcc
-        self.features = None  # To store the extracted features
-
-    def extract_features(self):
-        extracted_features = []
-        for audio in self.X:
             features = []
 
             # Extract MFCCs
@@ -223,6 +200,20 @@ class FeatureExtractor(AudioPreprocessor):
         return self.features, self.y
 
     
+
+class EmotionLabeler(FeatureExtractor):
+    def __init__(self, data_dir, emotions, sample_rate, target_length=16000, n_mfcc=13, verbose=True):
+        super().__init__(data_dir, emotions, sample_rate, target_length, n_mfcc, verbose)
+        self.emotion_map = {i: emotion for i, emotion in enumerate(emotions)}
+
+    def label_emotions(self):
+        labeled_emotions = [self.emotion_map[label] for label in self.y]
+        return labeled_emotions
+
+    def get_numerical_labels(self):
+        return self.y
+
+
 class DataSaver(EmotionLabeler):
     def __init__(self, data_dir, emotions, sample_rate, target_length=16000, n_mfcc=13, save_path="processed_data.csv", verbose=True):
         super().__init__(data_dir, emotions, sample_rate, target_length, n_mfcc, verbose)
@@ -235,18 +226,18 @@ class DataSaver(EmotionLabeler):
         df.to_csv(self.save_path, index=False)
         print(f"Data saved to {self.save_path}")
 
-    def save_to_npy(self):
-        features, labels = self.get_features_and_labels()
-        np.save(self.save_path.replace('.csv', '_features.npy'), features)
-        np.save(self.save_path.replace('.csv', '_labels.npy'), labels)
-        print(f"Features and labels saved to {self.save_path.replace('.csv', '_features.npy')} and {self.save_path.replace('.csv', '_labels.npy')}")
+    # Remove `save_to_npy` method since it's not needed
+    # def save_to_npy(self):
+    #     features, labels = self.get_features_and_labels()
+    #     np.save(self.save_path.replace('.csv', '_features.npy'), features)
+    #     np.save(self.save_path.replace('.csv', '_labels.npy'), labels)
+    #     print(f"Features and labels saved to {self.save_path.replace('.csv', '_features.npy')} and {self.save_path.replace('.csv', '_labels.npy')}")
 
     def split_data(self):
         features, labels = self.get_features_and_labels()
         X_train, X_temp, y_train, y_temp = train_test_split(features, labels, test_size=0.3, random_state=42)
         X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42)
         return X_train, X_val, X_test, y_train, y_val, y_test
-    
     
 class Modeling:
     def __init__(self, input_shape, num_classes):
