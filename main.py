@@ -203,14 +203,44 @@ class FeatureExtractor(AudioPreprocessor):
 
 class EmotionLabeler(FeatureExtractor):
     def __init__(self, data_dir, emotions, sample_rate, target_length=16000, n_mfcc=13, verbose=True):
+        """
+        Initializes the EmotionLabeler, inheriting from FeatureExtractor.
+
+        Args:
+            data_dir (str): Path to the directory containing audio files.
+            emotions (list): List of emotion labels.
+            sample_rate (int): Target sample rate for audio processing.
+            target_length (int): Desired length for audio padding/truncation.
+            n_mfcc (int): Number of MFCC coefficients to extract.
+            verbose (bool): Whether to print progress messages.
+        """
         super().__init__(data_dir, emotions, sample_rate, target_length, n_mfcc, verbose)
-        self.emotion_map = {i: emotion for i, emotion in enumerate(emotions)}
+
+        # Define the explicit mapping of emotions to numerical labels
+        self.emotion_map = {
+            'sad': 0,
+            'happy': 1,
+            'surprised': 2,
+            'angry': 3,
+            'calm': 4
+        }
 
     def label_emotions(self):
-        labeled_emotions = [self.emotion_map[label] for label in self.y]
-        return labeled_emotions
+        """
+        Converts numerical labels back to their corresponding emotion names.
+
+        Returns:
+            list: A list of emotion labels corresponding to the numerical labels in self.y.
+        """
+        return [self.emotion_map[label] for label in self.y]
 
     def get_numerical_labels(self):
+        """
+        Returns the numerical labels.
+
+        Returns:
+            numpy.ndarray: The numerical labels (self.y).
+        """
         return self.y
 
 
