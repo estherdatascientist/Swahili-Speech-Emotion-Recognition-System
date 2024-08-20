@@ -31,6 +31,15 @@ emotion_map = {
 }
 emotion_labels = list(emotion_map.values())
 
+# Feedback messages based on the objectives
+feedback_messages = {
+    'sad': "The customer might be feeling down or dissatisfied. Consider offering empathy and finding a solution to their problem.",
+    'happy': "The customer seems pleased with the service. Maintain this positive interaction and consider asking for feedback or a testimonial.",
+    'surprised': "The customer might have encountered something unexpected. Ensure that any surprises are positive and clarify any confusion.",
+    'angry': "The customer appears frustrated. It’s crucial to stay calm, listen to their concerns, and work towards a resolution.",
+    'calm': "The customer is calm and collected. Maintain this atmosphere by providing clear and concise information."
+}
+
 def convert_to_wav(audio_file):
     if isinstance(audio_file, str):  # Check if audio_file is a file path
         if not audio_file.endswith('.wav'):
@@ -69,7 +78,6 @@ def extract_features(audio, sample_rate):
     ])
     return features.reshape(1, -1)
 
-# Analyze a single audio file
 def analyze_single_audio(audio_file, model_name):
     audio_path = convert_to_wav(audio_file)
     audio, sample_rate = librosa.load(audio_path, sr=None)
@@ -78,8 +86,12 @@ def analyze_single_audio(audio_file, model_name):
 
     # Create a dictionary with emotion names and their probabilities
     predictions_with_labels = {emotion_map[i]: prob * 100 for i, prob in enumerate(predictions)}
+    
+    # Determine the highest probability emotion
+    max_emotion = max(predictions_with_labels, key=predictions_with_labels.get)
+    feedback = feedback_messages[max_emotion]
 
-    return predictions_with_labels
+    return predictions_with_labels, feedback
 
 # Analyze a folder of audio files
 def analyze_folder(folder_path):
@@ -147,14 +159,13 @@ def main():
         **Welcome to Skiza-AI!** This tool provides emotion analysis for audio files in Swahili. Choose from three types of analysis and see how emotions are represented in your audio files.
     """)
     
-    # Radio button for selecting analysis type
     analysis_type = st.radio("Select Analysis Type", ["Single Audio Analysis", "Folder Analysis", "Long Audio Analysis"])
 
     st.sidebar.header("Model Selection")
     selected_model = st.sidebar.selectbox(
         "Select Model",
         options=list(models.keys()),
-        index=0,  # Index of the recommended model (CatBoost)
+        index=0,  
         format_func=lambda x: f"**{x}**" if x == "CatBoost (Recommended)" else x
     )
 
@@ -164,7 +175,7 @@ def main():
         
         if audio_file is not None:
             if st.button("Start Analysis"):
-                predictions_with_labels = analyze_single_audio(audio_file, selected_model)
+                predictions_with_labels, feedback = analyze_single_audio(audio_file, selected_model)
 
                 # Display predictions for the selected model with emotion names
                 st.subheader(f"Predicted Emotion Probabilities ({selected_model})")
@@ -177,6 +188,10 @@ def main():
                 plt.title(f"Emotion Probabilities for {selected_model}")
                 plt.xticks(rotation=45)
                 st.pyplot(plt)
+                
+                # Display relevant feedback
+                st.subheader("Relevant Feedback")
+                st.write(feedback)
 
     elif analysis_type == "Folder Analysis":
         st.header("Folder Analysis")
