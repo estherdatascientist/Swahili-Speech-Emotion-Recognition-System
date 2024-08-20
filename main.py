@@ -19,6 +19,7 @@ from sklearn.preprocessing import label_binarize
 
 
 from itertools import cycle
+import pickle
 
 # Machine Learning (XGBoost and CatBoost)
 from xgboost import XGBClassifier
@@ -198,7 +199,6 @@ class FeatureExtractor(AudioPreprocessor):
         """
         self.extract_features()
         return self.features, self.y
-
     
 
 class EmotionLabeler(FeatureExtractor):
@@ -225,13 +225,6 @@ class DataSaver(EmotionLabeler):
         df['emotion'] = labels  # Save numerical labels instead of words
         df.to_csv(self.save_path, index=False)
         print(f"Data saved to {self.save_path}")
-
-    # Remove `save_to_npy` method since it's not needed
-    # def save_to_npy(self):
-    #     features, labels = self.get_features_and_labels()
-    #     np.save(self.save_path.replace('.csv', '_features.npy'), features)
-    #     np.save(self.save_path.replace('.csv', '_labels.npy'), labels)
-    #     print(f"Features and labels saved to {self.save_path.replace('.csv', '_features.npy')} and {self.save_path.replace('.csv', '_labels.npy')}")
 
     def split_data(self):
         features, labels = self.get_features_and_labels()
@@ -409,5 +402,39 @@ class Evaluation(TrainingWithCallbacks):
         self.plot_feature_importance()  # Only for models that support it
 
         return accuracy
+
+
+
+class ModelSaver:
+    def __init__(self, trained_models, save_dir="models"):
+        """
+        Initialize the ModelSaver class with trained models and a directory to save them.
+        
+        Parameters:
+        - trained_models (dict): A dictionary where keys are model names and values are trained model instances.
+        - save_dir (str): The directory where models will be saved. Defaults to 'models'.
+        """
+        self.trained_models = trained_models
+        self.save_dir = save_dir
+
+        # Create the save directory if it doesn't exist
+        if not os.path.exists(self.save_dir):
+            os.makedirs(self.save_dir)
+            print(f"Directory '{self.save_dir}' created.")
+        else:
+            print(f"Directory '{self.save_dir}' already exists.")
+
+    def save_models(self):
+        """
+        Save the trained models to the specified directory as pickle files.
+        """
+        for model_name, model_instance in self.trained_models.items():
+            model_file_path = os.path.join(self.save_dir, f"{model_name}.pkl")
+            try:
+                with open(model_file_path, 'wb') as model_file:
+                    pickle.dump(model_instance, model_file)
+                print(f"Model '{model_name}' saved successfully at '{model_file_path}'.")
+            except Exception as e:
+                print(f"Failed to save model '{model_name}': {e}")
 
 

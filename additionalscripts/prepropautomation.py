@@ -45,8 +45,7 @@ def preprocess_audio_data(raw_data_dir, preprocessed_data_dir):
                     try:
                         y, sr = librosa.load(input_path)
                         sf.write(output_path, y, sr, subtype='PCM_24')
-                        os.remove(input_path)  # Delete the original file after successful conversion
-                        print(f"Converted and moved: {filename} to {output_path}")
+                        print(f"Converted and copied: {filename} to {output_path}") 
                     except Exception as e:
                         print(f"Error processing {filename}: {e}")
                 else:  # Copy the file if it's already in WAV format
