@@ -7,6 +7,8 @@ import numpy as np
 # Audio Processing
 import librosa
 import noisereduce as nr
+import librosa.display
+
 
 # Machine Learning (scikit-learn)
 from sklearn.model_selection import train_test_split
@@ -16,6 +18,12 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC
 from sklearn.neural_network import MLPClassifier
 from sklearn.preprocessing import label_binarize
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
+
+
+from scipy.io import wavfile
+from scipy.signal import spectrogram
 
 
 from itertools import cycle
@@ -74,6 +82,105 @@ class DataCleaner(DataLoader):
 
             cleaned_X.append(cleaned_audio)
         return cleaned_X
+
+class EDA(DataCleaner):
+    def __init__(self, X, y, sample_rate, data_dir, emotions):
+        super().__init__(X, sample_rate)
+        self.y = y
+        self.data_dir = data_dir
+        self.emotions = emotions
+        self.genders = {'f': 'Female', 'm': 'Male'}
+        self.gender_counts = {'Female': 0, 'Male': 0, 'Unknown': 0}
+        self.emotion_counts = {emotion: 0 for emotion in emotions}
+        self.audio_lengths = {emotion: [] for emotion in emotions}
+
+    def count_recordings_per_emotion(self):
+        for i, emotion in enumerate(self.emotions):
+            emotion_dir = os.path.join(self.data_dir, emotion)
+            wav_files = [f for f in os.listdir(emotion_dir) if f.endswith('.wav')]
+            self.emotion_counts[emotion] = len(wav_files)
+            print(f"Number of recordings for emotion '{emotion}': {len(wav_files)}")
+
+    def count_genders(self):
+        for emotion in self.emotions:
+            emotion_dir = os.path.join(self.data_dir, emotion)
+            wav_files = [f for f in os.listdir(emotion_dir) if f.endswith('.wav')]
+            for filename in wav_files:
+                gender_code = filename[1].lower()
+                if gender_code in self.genders:
+                    self.gender_counts[self.genders[gender_code]] += 1
+                else:
+                    self.gender_counts['Unknown'] += 1
+        print(f"Gender counts: {self.gender_counts}")
+
+    def plot_waveplots_and_spectrograms(self):
+        for i, emotion in enumerate(self.emotions):
+            emotion_dir = os.path.join(self.data_dir, emotion)
+            wav_files = [f for f in os.listdir(emotion_dir) if f.endswith('.wav')]
+            if wav_files:
+                example_file = wav_files[0]
+                filepath = os.path.join(emotion_dir, example_file)
+                audio, sr = librosa.load(filepath)
+                duration = librosa.get_duration(y=audio, sr=sr)
+                
+                # Waveplot
+                plt.figure(figsize=(14, 5))
+                plt.subplot(1, 2, 1)
+                librosa.display.waveshow(audio, sr=sr)
+                plt.title(f'{emotion} Waveplot')
+                
+                # Spectrogram
+                plt.subplot(1, 2, 2)
+                Sxx, f, t, im = plt.specgram(audio, Fs=sr)
+                plt.title(f'{emotion} Spectrogram')
+                
+                plt.tight_layout()
+                plt.show()
+                
+                # Store audio lengths
+                self.audio_lengths[emotion].append(duration)
+
+    def compute_audio_length_statistics(self):
+        audio_length_stats = {}
+        for emotion, lengths in self.audio_lengths.items():
+            if lengths:
+                lengths = np.array(lengths)
+                audio_length_stats[emotion] = {
+                    'mean': np.mean(lengths),
+                    'std': np.std(lengths),
+                    'min': np.min(lengths),
+                    'max': np.max(lengths),
+                    'median': np.median(lengths)
+                }
+        print("Audio length statistics per emotion:")
+        for emotion, stats in audio_length_stats.items():
+            print(f"{emotion}: {stats}")
+
+    def visualize_emotion_distribution(self):
+        emotion_labels = list(self.emotion_counts.keys())
+        counts = list(self.emotion_counts.values())
+        
+        plt.figure(figsize=(10, 6))
+        sns.barplot(x=emotion_labels, y=counts, palette="viridis")
+        plt.xlabel('Emotions')
+        plt.ylabel('Number of Recordings')
+        plt.title('Number of Recordings per Emotion')
+        plt.xticks(rotation=45)
+        plt.show()
+
+    def visualize_gender_distribution(self):
+        gender_labels = list(self.gender_counts.keys())
+        counts = list(self.gender_counts.values())
+        
+        plt.figure(figsize=(8, 6))
+        sns.barplot(x=gender_labels, y=counts, palette="viridis")
+        plt.xlabel('Gender')
+        plt.ylabel('Number of Recordings')
+        plt.title('Number of Recordings by Gender')
+        plt.show()
+
+
+
 
 class AudioPreprocessor(DataCleaner):
     def __init__(self, data_dir, emotions, sample_rate, target_length=16000, verbose=True):
@@ -262,6 +369,89 @@ class DataSaver(EmotionLabeler):
         X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42)
         return X_train, X_val, X_test, y_train, y_val, y_test
     
+
+
+
+class FeaturesEDA(DataSaver):
+    def __init__(self, data_dir, emotions, sample_rate, target_length=16000, n_mfcc=13, save_path="processed_data.csv", verbose=True):
+        super().__init__(data_dir, emotions, sample_rate, target_length, n_mfcc, save_path, verbose)
+        self.df = pd.read_csv(self.save_path)  # Load the CSV file
+
+    def get_info(self):
+        """
+        Displays basic information about the DataFrame.
+        """
+        print("DataFrame Info:")
+        print(self.df.info())
+
+    def get_statistics(self):
+        """
+        Displays basic statistics of the features in the DataFrame.
+        """
+        print("DataFrame Statistics:")
+        print(self.df.describe())
+
+    def get_head_tail(self):
+        """
+        Displays the first and last few rows of the DataFrame.
+        """
+        print("DataFrame Head:")
+        print(self.df.head())
+        print("\nDataFrame Tail:")
+        print(self.df.tail())
+
+    def plot_correlation_matrix(self):
+        """
+        Computes and plots the correlation matrix.
+        """
+        # Compute the correlation matrix
+        corr_matrix = self.df.corr()
+        
+        # Plot the heatmap
+        plt.figure(figsize=(12, 10))
+        sns.heatmap(corr_matrix, annot=True, cmap='coolwarm', fmt='.2f')
+        plt.title('Correlation Matrix')
+        plt.show()
+
+        # Print a summary of correlation indices
+        print("Correlation Index Summary:")
+        for column in corr_matrix.columns:
+            print(f"\nColumn: {column}")
+            print(corr_matrix[column].sort_values(ascending=False))
+
+    def perform_pca(self):
+        """
+        Performs PCA on the feature set and plots the results.
+        """
+        features = self.df.drop(columns=['emotion'])
+        labels = self.df['emotion']
+
+        # Standardize features
+        scaler = StandardScaler()
+        features_scaled = scaler.fit_transform(features)
+
+        # Perform PCA
+        pca = PCA(n_components=2)
+        principal_components = pca.fit_transform(features_scaled)
+        
+        # Create a DataFrame for the principal components
+        pca_df = pd.DataFrame(data=principal_components, columns=['PC1', 'PC2'])
+        pca_df['emotion'] = labels
+
+        # Plot the PCA results
+        plt.figure(figsize=(10, 7))
+        sns.scatterplot(x='PC1', y='PC2', hue='emotion', palette='viridis', data=pca_df, alpha=0.7)
+        plt.title('PCA of Audio Features')
+        plt.xlabel('Principal Component 1')
+        plt.ylabel('Principal Component 2')
+        plt.legend(title='Emotion', bbox_to_anchor=(1.05, 1), loc='upper left')
+        plt.show()
+
+        # Print PCA summary
+        print(f"PCA Explained Variance Ratio: {pca.explained_variance_ratio_}")
+        print(f"PCA Explained Variance Ratio (Cumulative): {np.cumsum(pca.explained_variance_ratio_)}")
+
+
 class Modeling:
     def __init__(self, model_name, input_shape=None, num_classes=None):
         self.model_name = model_name
