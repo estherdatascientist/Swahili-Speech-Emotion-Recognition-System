@@ -64,9 +64,9 @@ To train the model, open and run the Jupyter notebook `main.ipynb`. This noteboo
 jupyter notebook main.ipynb
 ```
 
-### **2. Running the Streamlit App**
+### **2. Running the Streamlit App Locally**
 
-To start the Streamlit app, use:
+To start the Streamlit app locally, use:
 
 ```bash
 streamlit run app.py
@@ -74,9 +74,13 @@ streamlit run app.py
 
 This will open a new browser tab with the Streamlit app, allowing you to upload audio files and get emotion predictions.
 
-### **3. Accessing the User Interface**
+### **3. Accessing the Web Version**
 
-Once the Streamlit app is running, open your web browser and navigate to `http://localhost:8501`. Here, you can interact with the Skiza-App by uploading audio files, folders, or long audio files for emotion analysis.
+You can also access the Skiza-App online at the following URL:
+
+- [Skiza-AI Web App](https://skiza-ai.streamlit.app)
+
+This web version provides the same functionality as the local app, allowing you to upload audio files, folders, or long audio files for emotion analysis.
 
 ## **Features**
 
