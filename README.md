@@ -64,7 +64,7 @@ To train the model, run the training script:
 python train_model.py
 ```
 
-This script will load the dataset, preprocess the audio files, extract features, and train various models. The best-performing model (CatBoost) will be saved in the `models` directory.
+This script will load the dataset, preprocess the audio files, extract features, and train various models. The best-performing model (Stacking Model with KNN as the meta-learner) will be saved in the `models` directory.
 
 ### **2. Running the Streamlit App**
 
@@ -89,7 +89,7 @@ Once the Streamlit app is running, open your web browser and navigate to `http:/
 
 ## **Model Evaluation**
 
-The CatBoost model achieved an accuracy of 87%, making it the best performer among the tested models. For details on model performance and evaluation, refer to the `evaluation` module in the codebase.
+The Stacking Model with KNN as the meta-learner achieved an accuracy of 83%, making it the best performer among the tested models. For details on model performance and evaluation, refer to the `evaluation` module in the codebase.
 
 ## **Deployment**
 
