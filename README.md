@@ -58,13 +58,11 @@ pip install streamlit
 
 ### **1. Training the Model**
 
-To train the model, run the training script:
+To train the model, open and run the Jupyter notebook `main.ipynb`. This notebook will load the dataset, preprocess the audio files, extract features, and train various models. The best-performing model (Stacking Model with KNN as the meta-learner) will be saved in the `models` directory.
 
 ```bash
-python train_model.py
+jupyter notebook main.ipynb
 ```
-
-This script will load the dataset, preprocess the audio files, extract features, and train various models. The best-performing model (Stacking Model with KNN as the meta-learner) will be saved in the `models` directory.
 
 ### **2. Running the Streamlit App**
 
