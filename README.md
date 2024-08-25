@@ -2,7 +2,7 @@
 
 # Skiza-App: Speech Emotion Recognition for Kenyan Swahili
 
-Welcome to Skiza-App! This project focuses on developing and deploying a model to recognize emotions from speech, specifically tailored for Kenyan Swahili. The model leverages advanced machine learning techniques and is deployed using FastAPI for the backend API and a web interface for user interaction.
+Welcome to Skiza-App! This project focuses on developing and deploying a model to recognize emotions from speech, specifically tailored for Kenyan Swahili. The model leverages advanced machine learning techniques and is deployed using Streamlit for the web interface and user interaction.
 
 ## **Table of Contents**
 
@@ -46,12 +46,12 @@ pip install -r requirements.txt
 
 Ensure you have the Swahili speech dataset. Update the `data_dir` path in the configuration files to point to your dataset location.
 
-### **5. Install FastAPI and Uvicorn**
+### **5. Install Streamlit**
 
-If not included in `requirements.txt`, you may need to install FastAPI and Uvicorn separately:
+If not included in `requirements.txt`, you may need to install Streamlit separately:
 
 ```bash
-pip install fastapi uvicorn
+pip install streamlit
 ```
 
 ## **Usage**
@@ -66,25 +66,25 @@ python train_model.py
 
 This script will load the dataset, preprocess the audio files, extract features, and train various models. The best-performing model (CatBoost) will be saved in the `models` directory.
 
-### **2. Running the FastAPI Server**
+### **2. Running the Streamlit App**
 
-To start the FastAPI server, use:
+To start the Streamlit app, use:
 
 ```bash
-uvicorn main:app --reload
+streamlit run app.py
 ```
 
-This will run the API server, allowing you to access the user interface at `http://127.0.0.1:8000`. The interface provides options to upload audio files and get emotion predictions.
+This will open a new browser tab with the Streamlit app, allowing you to upload audio files and get emotion predictions.
 
 ### **3. Accessing the User Interface**
 
-Once the FastAPI server is running, open your web browser and navigate to `http://127.0.0.1:8000`. Here, you can interact with the Skiza-App by uploading audio files, folders, or long audio files for emotion analysis.
+Once the Streamlit app is running, open your web browser and navigate to `http://localhost:8501`. Here, you can interact with the Skiza-App by uploading audio files, folders, or long audio files for emotion analysis.
 
 ## **Features**
 
 - **Emotion Recognition**: Detects emotions from audio clips in Kenyan Swahili.
-- **Real-time Predictions**: Provides immediate feedback through the web interface.
-- **API Integration**: Offers RESTful API access through FastAPI for integration with other systems.
+- **Real-time Predictions**: Provides immediate feedback through the Streamlit interface.
+- **User-friendly Interface**: Streamlit provides a simple and intuitive web interface for uploading and analyzing audio files.
 - **Model Evaluation**: Includes model evaluation metrics such as accuracy, confusion matrix, and ROC curves.
 
 ## **Model Evaluation**
@@ -95,8 +95,8 @@ The CatBoost model achieved an accuracy of 87%, making it the best performer amo
 
 Skiza-App is deployed using:
 
-- **FastAPI**: For building a RESTful API and serving the web interface to upload and analyze audio files.
-- **Uvicorn**: As the ASGI server to run the FastAPI app.
+- **Streamlit**: For building the web interface and allowing users to upload and analyze audio files.
+- **Streamlit Server**: Manages the web app environment and user interactions.
 
 ## **Contributing**
 
@@ -109,6 +109,15 @@ Contributions are welcome! If you would like to contribute to this project, plea
 5. Open a pull request.
 
 Please make sure to adhere to the coding standards and include tests for new features.
+
+## **Acknowledgments**
+
+Special thanks to the data collection participants and the following contributors for their valuable input and support:
+
+- [Doreen Wanjiru](https://github.com/DoreenMolly)
+- [Gregory Mikuro](https://github.com/gregorymikuro)
+- [Samuel Hellen](https://github.com/samuelhellen)
+- [Ian Korir](https://github.com/SirIan71)
 
 ## **License**
 
